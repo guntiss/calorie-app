@@ -1,0 +1,36 @@
+# Nuxt
+.nuxt
+.output
+.data
+.nitro
+.vercel
+.cache
+dist
+
+# Dependencies
+node_modules
+
+# Logs
+logs
+*.log
+
+# Env
+.env
+.env.*
+!.env.example
+
+# Test artefacts
+test-results
+playwright-report
+
+# Deployment is specific to whoever is running this, so the workflow that does
+# it is kept out of the repo while still living here, where GitHub picks it up
+# and runs it. Keep a copy off-machine: a fresh clone will not have one.
+.github/workflows/deploy.yml
+
+# Misc
+.DS_Store
+.fleet
+.idea
+.vscode
+.pnpm-store

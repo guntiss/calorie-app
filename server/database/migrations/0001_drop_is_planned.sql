@@ -1,0 +1,1 @@
+ALTER TABLE "log_entries" DROP COLUMN "is_planned";

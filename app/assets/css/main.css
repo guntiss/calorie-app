@@ -1,0 +1,108 @@
+@import "tailwindcss";
+@import "@nuxt/ui";
+
+@theme static {
+  --font-sans: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+
+  /* Tabular numerals everywhere in the grid keep columns from jittering while typing. */
+  --font-mono: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+}
+
+/* The day grid is a dense, numeric surface. These two utilities are used enough
+   across EntryRow / DayFooter to be worth naming once. */
+@utility num {
+  font-variant-numeric: tabular-nums;
+}
+
+html,
+body {
+  /* Prevent iOS rubber-band scroll fighting the sticky day footer. This also
+     takes the browser's own pull-to-refresh with it, which PullToRefresh
+     reimplements — see that component. */
+  overscroll-behavior-y: none;
+}
+
+@layer base {
+  /* Tailwind's reset leaves buttons showing the default arrow. On a desktop the
+     pointer is most of what makes a control feel like a control, so every
+     control gets it — including the ones inside Nuxt UI. */
+  button:not(:disabled),
+  [role="button"]:not([aria-disabled="true"]),
+  summary,
+  label[for] {
+    cursor: pointer;
+  }
+
+  /* Hover on a text field is a hint, not a state change: the pointer already
+     changed, so this only has to say "yes, this one". */
+  input,
+  textarea,
+  select {
+    transition: background-color 150ms ease, box-shadow 150ms ease;
+  }
+
+  /* Nothing on the page is text to be selected: it is an app, and every press
+     on it is a press on a control, a swipe or a hold. On a phone the selection
+     that a hold would otherwise raise — the magnifier, the callout menu — lands
+     on top of the gesture that hold is for, which is reordering the day. */
+  body {
+    -webkit-touch-callout: none;
+    -webkit-user-select: none;
+    user-select: none;
+  }
+
+  /* What is typed into is still text, and still selectable as text. */
+  input,
+  textarea {
+    -webkit-user-select: text;
+    user-select: text;
+  }
+}
+
+/* iOS Safari zooms the viewport whenever a focused field's text is under 16px,
+   which shifts the whole grid sideways mid-typing and never zooms back out.
+   Every field here is text-sm or smaller, so on touch devices they all opt up
+   to 16px. Deliberately unlayered: Tailwind's utilities layer would otherwise
+   win over this, and `text-sm` is set per-element throughout.
+   The alternative — `maximum-scale=1` on the viewport meta — would fix it
+   without touching layout, but it also takes pinch-to-zoom away from the app. */
+@media (pointer: coarse) {
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+}
+
+/* A sheet that fits inside what is actually on screen rather than inside the
+   window, so the keypad coming up shrinks it instead of covering its bottom
+   half — the list gives the room, and the footer stays reachable. The numbers
+   read from --viewport-* come from useViewportFit; without it (no
+   `visualViewport`, or the server's first paint) the fallbacks leave the plain
+   full-height sheet exactly as it was.
+   Deliberately unlayered: this has to beat the `top-1/2` and `max-h-*` the
+   modal's own theme puts on the same element, and those are Tailwind
+   utilities. */
+.fits-viewport {
+  --fit: calc(var(--viewport-height, 100dvh) - 1rem);
+
+  top: var(--viewport-center, 50%);
+  height: min(80dvh, var(--fit));
+  max-height: var(--fit);
+}
+
+@media (min-width: 40rem) {
+  .fits-viewport {
+    --fit: calc(var(--viewport-height, 100dvh) - 2rem);
+
+    height: min(calc(100dvh - 6rem), 40rem, var(--fit));
+  }
+}
+
+/* The keypad slides in over about a quarter of a second; a sheet that jumps to
+   its new height at the front of that reads as a flicker. */
+@media (prefers-reduced-motion: no-preference) {
+  .fits-viewport {
+    transition: height 200ms ease-out, top 200ms ease-out;
+  }
+}
