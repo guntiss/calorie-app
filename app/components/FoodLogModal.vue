@@ -40,8 +40,8 @@ useViewportFit()
  *
  * Held here rather than passed in: the day has one button that opens this, so
  * which meal is meant is a question the modal asks instead of one it is
- * answered before it opens. Starts on the meal last logged into, which is
- * nearly always the one meant again.
+ * answered before it opens. Starts on the meal the clock says it is, unless
+ * another was picked by hand earlier in the same part of the day.
  */
 const mealId = ref<string | undefined>()
 
@@ -52,15 +52,27 @@ const mealItems = computed(() => store.meals.map(meal => ({ label: meal.name, va
 const mealName = computed(() => store.meals.find(meal => meal.id === mealId.value)?.name ?? 'food')
 
 /**
- * The remembered meal, or the first one when there is nothing to remember.
+ * The meal the modal opens on.
  *
- * The stored id is checked against the meals actually on the day: meals can be
+ * On today: a meal picked by hand in this part of the day, else the one the
+ * time of day names. On any other day the clock says nothing about what was
+ * eaten when, so the last meal picked stands in. The first meal when none of
+ * these turns up anything.
+ *
+ * Stored ids are checked against the meals actually on the day: meals can be
  * renamed and removed, and a row pointing at one that is gone would leave the
  * radios with nothing selected and Save with nowhere to put the food.
  */
 function startingMeal() {
+  const exists = (id: string | null): id is string => !!id && store.meals.some(meal => meal.id === id)
+  if (store.date === todayIso()) {
+    const picked = lastMeal.readCurrent()
+    if (exists(picked)) return picked
+    const timed = mealForSlot(store.meals, mealSlotAt(new Date()))
+    if (timed) return timed.id
+  }
   const stored = lastMeal.read()
-  if (stored && store.meals.some(meal => meal.id === stored)) return stored
+  if (exists(stored)) return stored
   return store.meals[0]?.id
 }
 
@@ -307,9 +319,18 @@ async function save(again: boolean) {
   if (untouched) takeFocus()
 }
 
-// The meal is remembered as soon as it is picked, not when something is saved:
-// closing the modal without logging anything still says which meal was meant.
-watch(mealId, id => lastMeal.remember(id ?? null))
+/**
+ * A meal picked by hand.
+ *
+ * Remembered as soon as it is picked, not when something is saved: closing the
+ * modal without logging anything still says which meal was meant. Only a tap
+ * counts — the meal the modal opened on was a guess, and storing it would turn
+ * the guess into a pick that outlasts the clock moving on.
+ */
+function pickMeal(id: string | undefined) {
+  mealId.value = id
+  lastMeal.remember(id ?? null)
+}
 
 // --- opening --------------------------------------------------------------
 
@@ -563,7 +584,7 @@ function move(delta: number) {
 
         <!-- The meal sits at the foot of the form, against the buttons that
              act on it: it is the one thing here that is usually already right
-             — the modal opens on the meal last logged into — so it belongs
+             — the modal opens on the meal the clock says it is — so it belongs
              where it can be read on the way to Save rather than in front of
              the weight and the food, which are what there is to type. Reads as
              one filled segment among four rather than as a question with a
@@ -575,8 +596,9 @@ function move(delta: number) {
              room, and an even row of segments is a shape the eye takes in whole
              — four names to compare rather than four things to read. -->
         <URadioGroup
-          v-model="mealId"
+          :model-value="mealId"
           :items="mealItems"
+          @update:model-value="pickMeal"
           orientation="horizontal"
           variant="card"
           indicator="hidden"
